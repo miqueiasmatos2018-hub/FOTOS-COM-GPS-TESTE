@@ -1751,40 +1751,36 @@ function _drawRouteImageLabel(ctx, x, y, text, registry) {
   ctx.fillText(text, x + padX, y);
 }
 
-// Small white dot + name pill for a city/town that falls inside the
-// exported frame (see _fetchCitiesInBBox / _pickCitiesForImage above) --
-// visually distinct from the route pins and road shields so it reads as
-// "place on the map", not another stop or highway marker. The dot always
-// stays exactly on the city's real coordinate; only the text pill nudges
-// if it would overlap another label already placed.
+// Name of a city/town that falls inside the exported frame (see
+// _fetchCitiesInBBox / _pickCitiesForImage above) -- just the white name,
+// no dot and no background pill, per the requested style: a black outline
+// around the white text keeps it legible over any satellite background
+// without needing a filled marker or pill behind it. Centered exactly on
+// the city's real coordinate; only nudged (as a whole) if it would overlap
+// another label already placed.
 function _drawCityMarker(ctx, x, y, name, registry) {
   const s = ROUTE_IMAGE_UI_SCALE;
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, 3.5 * s, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-  ctx.lineWidth = 1.2 * s;
-  ctx.strokeStyle = '#000';
-  ctx.stroke();
-  ctx.restore();
-
-  const fontSize = 13 * s, padX = 6 * s, padY = 3 * s;
+  const fontSize = 13 * s, padX = 4 * s, padY = 3 * s;
   ctx.font = `600 ${fontSize}px sans-serif`;
-  const w = ctx.measureText(name).width + padX * 2;
-  const h = fontSize + padY * 2;
-  let lx = x + 7 * s, ly = y;
+  const textW = ctx.measureText(name).width;
+  const w = textW + padX * 2, h = fontSize + padY * 2;
+  let boxX = x - w / 2, boxY = y - h / 2;
   if (registry) {
-    const pos = _reserveLabelBox(registry, lx, ly - h / 2, w, h);
-    lx = pos.x; ly = pos.y + h / 2;
+    const pos = _reserveLabelBox(registry, boxX, boxY, w, h);
+    boxX = pos.x; boxY = pos.y;
   }
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  _drawRoundedRect(ctx, lx, ly - h / 2, w, h, 3 * s);
-  ctx.fill();
-  ctx.fillStyle = '#1a1a1a';
+  const cx = boxX + w / 2, cy = boxY + h / 2;
+
+  ctx.save();
   ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.fillText(name, lx + padX, ly);
+  ctx.textAlign = 'center';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3 * s;
+  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+  ctx.strokeText(name, cx, cy);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(name, cx, cy);
+  ctx.restore();
 }
 
 // Highway "shield" pill, e.g. "BR-174" / "RR-203" -- fixed pixel font size

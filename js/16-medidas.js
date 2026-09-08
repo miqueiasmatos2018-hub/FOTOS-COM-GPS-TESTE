@@ -534,24 +534,33 @@ async function _startMedidasCidadesLookup(s) {
     // is also the highway's direction of travel at that exact point.
     const roadBearing = (90 - a.anguloEixo + 360) % 360;
 
-    // Busca cidades num raio, filtra pelas que ficam sobre a geometria da
-    // própria BR (quando disponível) e cai para a lista sem filtro se essa
-    // checagem não achar nada.
+    // Busca cidades num raio e filtra pelas que ficam sobre a geometria da
+    // própria BR. CORREÇÃO: antes, quando a checagem contra a BR não achava
+    // nenhuma cidade (via não encontrada no Overpass, nenhuma dentro de
+    // CIDADE_MATCH_RADIUS_M da geometria, etc.), o código caía de volta para
+    // "qualquer cidade próxima, de qualquer rodovia" -- por isso apareciam
+    // sugestões de cidades que não têm nada a ver com a BR do KML sendo
+    // analisado. Isso só é aceitável quando a BR em si é desconhecida (sem
+    // "digits" não há contra o que filtrar); sabendo a BR, uma cidade que
+    // não bateu na checagem é tratada como "não encontrada" em vez de
+    // arriscar mostrar uma cidade errada num relatório de inspeção.
     async function candidatesAt(radiusM) {
-      const [cities, brWays] = await Promise.all([
-        _fetchCidadesNear(ld.lat, ld.lng, radiusM),
-        digits ? _fetchBRWaysNear(ld.lat, ld.lng, digits, radiusM).catch(err => {
-          console.warn('BR-geometry lookup for Cidade Antes/Depois failed, falling back to unfiltered:', err);
-          return [];
-        }) : Promise.resolve([])
-      ]);
+      if (!digits) return await _fetchCidadesNear(ld.lat, ld.lng, radiusM); // BR desconhecida -- nada pra filtrar contra
+      let cities, brWays;
+      try {
+        [cities, brWays] = await Promise.all([
+          _fetchCidadesNear(ld.lat, ld.lng, radiusM),
+          _fetchBRWaysNear(ld.lat, ld.lng, digits, radiusM)
+        ]);
+      } catch (err) {
+        console.warn('Cidade Antes/Depois (filtro por BR) falhou:', err);
+        return [];
+      }
+      if (!brWays.length) return [];
       const matchKm = CIDADE_MATCH_RADIUS_M / 1000;
-      const onBR = brWays.length
-        ? cities.filter(c => c.lat != null && c.lon != null && brWays.some(w =>
-            (w.geometry || []).some(pt => _haversineKm(c.lat, c.lon, pt.lat, pt.lon) <= matchKm)
-          ))
-        : [];
-      return onBR.length ? onBR : cities;
+      return cities.filter(c => c.lat != null && c.lon != null && brWays.some(w =>
+        (w.geometry || []).some(pt => _haversineKm(c.lat, c.lon, pt.lat, pt.lon) <= matchKm)
+      ));
     }
 
     let { antes, depois } = _pickCidadesAntesDepois(

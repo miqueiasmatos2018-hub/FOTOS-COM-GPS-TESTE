@@ -792,6 +792,24 @@
   .medidas-row-copy.copied { background: #4caf50; border-color: #4caf50; color: #0a1f0a; }
   .medidas-row-copy.copy-failed { background: #f44336; border-color: #f44336; color: #fff; }
 
+  /* Cidade Antes/Depois: o próprio valor é um botão -- clique pra escolher
+     a cidade direto no mapa em vez de confiar só na busca automática. */
+  .medidas-row-pick {
+    background: none;
+    border: 1px dashed var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-weight: 400;
+    font-size: 11px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .medidas-row-pick:hover { border-color: var(--accent); background: rgba(212,245,60,0.08); color: #ffffff; }
+  .medidas-row-pick.active { border-color: var(--accent); background: rgba(212,245,60,0.18); color: var(--accent); }
+
   .medidas-subhead {
     font-family: var(--mono);
     font-size: 10px;

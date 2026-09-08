@@ -246,20 +246,78 @@ function _setGpxLayerVisible(visible) {
   if (_gpxTrackPoints) _gpxRenderMapPreview();
 }
 
+// Salva as fotos geocodificadas numa pasta de verdade (File System Access
+// API -- mesmo caminho de exportAllSmart() em 06-export.js e do botão de
+// Fotos Superiores em 20-fotos-superiores.js), sem passar por ZIP. Onde
+// essa API não existe (Firefox, Safari), cai de volta para o download
+// solto de cada arquivo.
 async function _gpxDownloadAll() {
   const items = (_gpxResultItems || []).filter(i => i.lat != null);
   if (!items.length) return;
   const btn = document.getElementById('gpxDownloadBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ BAIXANDO…'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ SALVANDO…'; }
+
+  function buildPhotoLike(item) {
+    return {
+      file: item.file,
+      name: item.name,
+      lat: item.lat,
+      lng: item.lng,
+      exif: item.alt != null ? { GPSAltitude: item.alt } : {}
+    };
+  }
+
+  if (window.showDirectoryPicker) {
+    let dirHandle;
+    try {
+      dirHandle = await window.showDirectoryPicker({
+        mode: 'readwrite',
+        startIn: 'downloads',
+        id: 'gpx-export'
+      });
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        if (btn) { btn.disabled = false; btn.textContent = '⬇ BAIXAR FOTOS COM GPS'; }
+        return;
+      }
+      dirHandle = null; // sem permissão / API indisponível -> cai no download solto
+    }
+
+    if (dirHandle) {
+      try {
+        const folder = await dirHandle.getDirectoryHandle('fotos com gps', { create: true });
+        const used = new Set();
+        let errors = 0;
+        for (const item of items) {
+          const filename = makeUniqueName(ensureJpgExtension(item.name), used);
+          try {
+            const blob = await buildJpegWithExif(buildPhotoLike(item));
+            const fileHandle = await folder.getFileHandle(filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+          } catch (writeErr) {
+            errors++;
+            console.error('Não foi possível salvar', filename, writeErr);
+          }
+        }
+        showToast(errors
+          ? `✓ ${items.length - errors} fotos salvas na pasta (${errors} com erro)`
+          : `✓ <span class="accent">${items.length} fotos</span> salvas na pasta "fotos com gps"`);
+        if (btn) { btn.disabled = false; btn.textContent = '⬇ BAIXAR FOTOS COM GPS'; }
+        return;
+      } catch (err) {
+        console.error('Exportação de fotos GPX para pasta falhou, caindo para download solto:', err);
+      }
+    }
+  }
+
+  // Alternativa: um <a download> por foto, com um pequeno intervalo entre
+  // cada uma -- disparar vários downloads no mesmo instante faz o
+  // navegador bloquear ou juntar tudo num só.
   try {
     for (const item of items) {
-      const photoLike = {
-        file: item.file,
-        name: item.name,
-        lat: item.lat,
-        lng: item.lng,
-        exif: item.alt != null ? { GPSAltitude: item.alt } : {}
-      };
+      const photoLike = buildPhotoLike(item);
       const blob = await buildJpegWithExif(photoLike);
       triggerDownload(blob, ensureJpgExtension(item.name));
       await _sleep(250);

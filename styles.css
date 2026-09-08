@@ -255,15 +255,6 @@
   }
   .logo span { color: var(--text); }
 
-  .header-meta {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    text-align: right;
-    line-height: 1.7;
-    letter-spacing: 0.5px;
-  }
-
   .header-right {
     display: flex;
     align-items: center;
@@ -508,7 +499,6 @@
 
   @media (max-width: 900px) {
     header { grid-template-columns: auto 1fr; row-gap: 10px; }
-    .header-meta { display: none; }
     .top-tabs { grid-column: 1 / -1; justify-content: flex-start; overflow-x: auto; }
   }
 
@@ -3404,9 +3394,6 @@
 
   .btn-export:active { transform: none; }
 
-  .btn-export.copied { background: #4caf50; color: #0a1f0a; }
-  .btn-export.copy-failed { background: #f44336; color: #fff; }
-
   .route-result-row {
     display: flex;
     align-items: center;
@@ -3704,8 +3691,3 @@
 /* Nenhuma foto tem miniatura antes de ser decodificada; sem isso o alt
    text/ícone de imagem quebrada piscava na lista. */
 .photo-thumb { background: rgba(255, 255, 255, 0.04); object-fit: cover; }
-
-/* Respeita quem prefere menos animação (WCAG 2.3.3) */
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-}

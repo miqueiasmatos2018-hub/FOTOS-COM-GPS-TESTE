@@ -63,7 +63,7 @@ function _inspDeleteTeam(id) {
 function _inspAddCodes(teamId, text) {
   const team = _inspTeamById(teamId);
   if (!team) return;
-  const codes = String(text || '').split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+  const codes = String(text || '').split(/[\n\r\t,;]+/).map(s => s.trim()).filter(Boolean);
   if (!codes.length) return;
 
   let notFound = 0;
@@ -281,7 +281,7 @@ function _inspTeamHtml(team) {
         <button class="insp-team-delete" title="Remover equipe">🗑</button>
       </div>
       <div class="insp-team-add">
-        <input class="insp-code-input" placeholder="Código da OAE (Enter adiciona · aceita vários separados por vírgula)">
+        <input class="insp-code-input" placeholder="Código da OAE · Enter adiciona, ou cole uma coluna do Excel">
         <button class="insp-code-add-btn" type="button">+ Adicionar</button>
       </div>
       <div class="insp-team-stops">${stopsHtml}</div>
@@ -329,6 +329,21 @@ function _inspRenderTeams() {
     };
     codeInput.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); submitCode(); } });
     addBtn.addEventListener('click', ev => { ev.stopPropagation(); submitCode(); });
+    // Colar uma coluna copiada do Excel: um <input> de uma linha só
+    // descarta as quebras de linha do texto colado (tudo vira uma linha
+    // grudada), então sem isso só o primeiro código entrava. Lendo
+    // clipboardData.getData direto (em vez de deixar o navegador colar no
+    // campo) preserva as quebras de linha originais.
+    codeInput.addEventListener('paste', ev => {
+      const text = (ev.clipboardData || window.clipboardData).getData('text');
+      if (text && /[\n\r\t,;]/.test(text)) {
+        ev.preventDefault();
+        _inspAddCodes(teamId, text);
+        codeInput.value = '';
+      }
+      // colar um valor único (sem separador) segue o comportamento normal
+      // do campo -- a pessoa ainda pode revisar/editar antes do Enter.
+    });
 
     el.querySelectorAll('.insp-stop-item').forEach(item => {
       const idx = Number(item.dataset.idx);

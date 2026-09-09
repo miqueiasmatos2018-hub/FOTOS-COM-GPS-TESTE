@@ -529,7 +529,63 @@ const ELEMENTOS_CODE_CATALOG_CSV = `Código;Nome;Categoria
     if (rows.some(function(r){return r.__categoria!=='';})) contextCols.push('__categoria');
     if (idx.transicao!==-1 && rows.some(function(r){return r.transicao!=='';})) contextCols.push('transicao');
 
+    rows = addDefaultElements(rows, dimCols);
+
     return { rows: rows, dimCols: dimCols, contextCols: contextCols };
+  }
+
+  // ---------- elementos padrão (preenchidos automaticamente quando faltam) ----------
+  // Alguns tipos quase sempre existem na obra mas às vezes saem de fora da
+  // exportação do SGE -- em vez de a pessoa ter que lembrar de criar essas
+  // linhas na mão, a ferramenta adiciona um card em branco (só com o tipo
+  // certo, pronto pra preencher/copiar as medidas depois) sempre que a
+  // seção correspondente (TRANSIÇÃO ou COMPLEMENTAR) já existe nos dados
+  // mas esse elemento específico não aparece nela. Se o elemento já vier
+  // no CSV, nada é adicionado -- os dados reais sempre têm prioridade.
+  var DEFAULT_ELEMENTS = [
+    // "por transição": uma cópia para cada seção TRANSIÇÃO que já exista
+    // nos dados (uma obra de 2 tramos com transição em cada ponta gera 2
+    // dessas, uma por transição -- não uma vez só pra obra toda).
+    { code: 3302, nome: 'Aterro de acesso',   scope: 'transicao',    qty: 1 },
+    { code: 3307, nome: 'Defensa Metálica',   scope: 'transicao',    qty: 2 },
+    // Junta de dilatação é COMPLEMENTAR, não por transição -- 2 unidades
+    // por seção Complementares que já exista nos dados.
+    { code: 5312, nome: 'Junta de dilatação', scope: 'complementar', qty: 2 }
+  ];
+
+  function addDefaultElements(rows, dimCols){
+    // Agrupa as linhas reais por (tramo, categoria, transição) pra achar
+    // quais seções TRANSIÇÃO/COMPLEMENTAR já existem nos dados, e o que já
+    // está preenchido em cada uma.
+    var seen = {};
+    rows.forEach(function(r){
+      var key = r.__tramo + '␟' + r.__categoria + '␟' + (r.transicao||'');
+      if (!seen[key]) seen[key] = { tramo:r.__tramo, categoria:r.__categoria, transicao:r.transicao||'', names:{} };
+      seen[key].names[(r.nome||'').trim().toUpperCase()] = true;
+    });
+
+    var extra = [];
+    Object.keys(seen).forEach(function(key){
+      var g = seen[key];
+      var isTransicao   = /TRANSI/i.test(g.categoria) || /TRANSI/i.test(g.tramo);
+      var isComplementar = /COMPLEMENTAR/i.test(g.categoria) || /COMPLEMENTAR/i.test(g.tramo);
+      DEFAULT_ELEMENTS.forEach(function(def){
+        if (def.scope === 'transicao' && !isTransicao) return;
+        if (def.scope === 'complementar' && !isComplementar) return;
+        if (g.names[def.nome.toUpperCase()]) return; // já existe -- não duplica
+        for (var i=0; i<def.qty; i++){
+          // Todas as medidas desses elementos padrão saem como "0" (em vez
+          // de em branco) -- é o valor que a pessoa pediu para eles.
+          var dims = {};
+          (dimCols||[]).forEach(function(col){ dims[col] = '0'; });
+          extra.push({
+            __tramo: g.tramo, __categoria: g.categoria, __dims: dims,
+            id: String(def.code), codigo: '', nome: def.nome, transicao: g.transicao
+          });
+        }
+      });
+    });
+    return rows.concat(extra);
   }
 
   var COL_LABELS = { codigo:'CÓDIGO', __tramo:'TRAMO', __categoria:'CATEGORIA', transicao:'TRANSIÇÃO' };

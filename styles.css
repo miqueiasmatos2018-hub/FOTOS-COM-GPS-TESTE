@@ -1238,21 +1238,23 @@
 
   .nomes-inf-diagrams {
     display: flex;
-    gap: 0;
-    overflow-x: hidden;
+    gap: 10px;
+    overflow-x: auto;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: rgba(255,255,255,0.015);
     padding: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) rgba(255,255,255,0.05);
   }
+  .nomes-inf-diagrams::-webkit-scrollbar { height: 10px; }
+  .nomes-inf-diagrams::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 6px; }
+  .nomes-inf-diagrams::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 6px; }
   .nomes-inf-diagram-wrap {
-    flex-grow: 1;
-    flex-shrink: 1;
-    flex-basis: 0;
-    min-width: 0;
-    max-width: 260px;
+    flex: 0 0 260px;
+    width: 260px;
     border: 1px solid var(--accent);
-    border-radius: 0;
+    border-radius: 4px;
     background: rgba(255,255,255,0.02);
     padding: 10px;
   }

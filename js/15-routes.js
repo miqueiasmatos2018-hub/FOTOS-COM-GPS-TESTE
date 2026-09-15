@@ -1223,11 +1223,45 @@ ${routePlacemarks}${routePlacemarks && ldPlacemarks ? '\n' : ''}${ldPlacemarks}
   const fileName = safeMiddle ? `ROTA_ALTERNATIVA_${safeMiddle}.kml` : 'ROTA_ALTERNATIVA.kml';
 
   triggerDownload(new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' }), fileName);
+  // Pequeno atraso antes do segundo download: dois cliques automáticos em
+  // sequência imediata levam alguns navegadores a bloquear o segundo como
+  // se fosse pop-up. 400ms é suficiente e imperceptível para quem clicou.
+  setTimeout(() => _exportRouteTrajetoDiffCSV(safeMiddle), 400);
   const parts = [];
   if (ready.length) parts.push(`${ready.length} rota${ready.length > 1 ? 's' : ''}`);
   if (LD_INICIO_POINTS.length) parts.push(`${LD_INICIO_POINTS.length} ponto${LD_INICIO_POINTS.length > 1 ? 's' : ''} LD_INICIO_OAE`);
   showToast(`⬇ <span class="accent">${parts.join(' + ')}</span> exportado(s)`);
 };
+
+// Chamado só pelo exportRoutesKML() acima, logo depois do KML -- exporta o
+// mesmo texto que já está na tela em TRAJETO: / DIFERENÇA (KM): (sem
+// recalcular nada, mesmo padrão usado por copyRouteTrajeto()/
+// copyRouteDiffKm()). Se nenhum dos dois estiver pronto ainda, não gera um
+// CSV vazio -- o KML acima já saiu normalmente de qualquer forma.
+function _exportRouteTrajetoDiffCSV(safeMiddle) {
+  const trajetoEl = document.getElementById('routeTrajetoValue');
+  const diffEl = document.getElementById('routeDiffValue');
+  const trajeto = trajetoEl ? trajetoEl.textContent.trim() : '';
+  // mesma limpeza do "+"/" KM" que copyRouteDiffKm() já faz ao copiar,
+  // para o número colar limpo numa planilha.
+  const diffRaw = diffEl ? diffEl.textContent.trim() : '';
+  const diff = diffRaw.replace(/^\+/, '').replace(/\s*km\s*$/i, '').trim();
+
+  const trajetoReady = trajeto && trajeto !== '—' && trajeto !== '…';
+  const diffReady = diff && diff !== '—' && diff !== '…';
+  if (!trajetoReady && !diffReady) return;
+
+  const esc = v => (/[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v);
+  const lines = [
+    'Trajeto,Diferença (km)',
+    `${esc(trajetoReady ? trajeto : '')},${esc(diffReady ? diff : '')}`
+  ];
+  // BOM no início -- sem ele o Excel abre acentos/ç quebrados em CSV UTF-8.
+  const csv = '\uFEFF' + lines.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const fileName = safeMiddle ? `ROTA_ALTERNATIVA_${safeMiddle}_trajeto.csv` : 'ROTA_ALTERNATIVA_trajeto.csv';
+  triggerDownload(blob, fileName);
+}
 
 // ─── REIMPORTAR (restaurar paradas de um KML exportado antes por esta
 // mesma ferramenta) ──────────────────────────────────────────────────────

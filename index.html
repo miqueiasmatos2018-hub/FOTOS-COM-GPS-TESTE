@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
-<link rel="stylesheet" href="styles.css?v=34">
+<link rel="stylesheet" href="styles.css?v=38">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" defer></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js" defer></script>
@@ -363,7 +363,7 @@
         <button class="route-result-copy" id="routeCopyDiffBtn" onclick="copyRouteDiffKm()" title="Copiar diferença">Copiar</button>
       </div>
       <div class="route-export-row">
-        <button class="btn-export route-export-btn" id="routeExportBtn" onclick="exportRoutesKML()" title="Exportar as rotas como arquivo KML">⬇ KML</button>
+        <button class="btn-export route-export-btn" id="routeExportBtn" onclick="exportRoutesKML()" title="Exportar as rotas como KML + um CSV com o trajeto e a diferença em km">⬇ KML</button>
         <button class="btn-export route-export-btn" id="routeImageBtn" onclick="exportRoutesImage()" title="Gerar imagem JPG com as rotas">🖼️ IMAGEM</button>
       </div>
     </div>
@@ -430,6 +430,12 @@
           <h2 class="nomes-h1">Gerador de Nomes de Fotos</h2>
           <p class="nomes-subtitle">Monta os nomes padronizados das fotos de inspeção de uma OAE — fotos superiores (fixas, via diagrama) e fotos inferiores (configuráveis) — prontos para copiar direto para o arquivo de fotos.</p>
         </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <button class="nomes-btn primary" id="nomesBtnExportCsv" type="button" style="width:100%;" title="Legendas já criadas (as 11 superiores + as inferiores geradas), em ordem crescente de número.">
+          ⬇ EXPORTAR LEGENDAS (CSV)
+        </button>
       </div>
 
       <div class="nomes-section">
@@ -876,29 +882,29 @@
      LOAD ORDER MATTERS. The files are numbered; keep them in this order.
      Concatenating them in this order reproduces the original program.
      =========================================================================== -->
-<script src="js/00-core.js?v=34" defer></script>
-<script src="js/01-map-core.js?v=34" defer></script>
-<script src="js/02-orientation-layers.js?v=34" defer></script>
-<script src="js/03-state.js?v=34" defer></script>
-<script src="js/04-photos.js?v=34" defer></script>
-<script src="js/05-photo-markers.js?v=34" defer></script>
-<script src="js/06-export.js?v=34" defer></script>
-<script src="js/07-map-ui.js?v=34" defer></script>
-<script src="js/08-kml.js?v=34" defer></script>
-<script src="js/09-tabs-bulk.js?v=34" defer></script>
-<script src="js/10-interactions.js?v=34" defer></script>
-<script src="js/11-photo-fixes.js?v=34" defer></script>
-<script src="js/12-search-pontos.js?v=34" defer></script>
-<script src="js/13-sorting.js?v=34" defer></script>
-<script src="js/14-tools.js?v=34" defer></script>
-<script src="js/15-routes.js?v=34" defer></script>
-<script src="js/16-medidas.js?v=34" defer></script>
-<script src="js/17-elementos.js?v=34" defer></script>
-<script src="js/18-nomes.js?v=34" defer></script>
-<script src="js/19-boot.js?v=34" defer></script>
-<script src="js/20-fotos-superiores.js?v=34" defer></script>
-<script src="js/21-municipios-br.js?v=34" defer></script>
-<script src="js/22-gpx.js?v=34" defer></script>
-<script src="js/23-inspecoes.js?v=34" defer></script>
+<script src="js/00-core.js?v=38" defer></script>
+<script src="js/01-map-core.js?v=38" defer></script>
+<script src="js/02-orientation-layers.js?v=38" defer></script>
+<script src="js/03-state.js?v=38" defer></script>
+<script src="js/04-photos.js?v=38" defer></script>
+<script src="js/05-photo-markers.js?v=38" defer></script>
+<script src="js/06-export.js?v=38" defer></script>
+<script src="js/07-map-ui.js?v=38" defer></script>
+<script src="js/08-kml.js?v=38" defer></script>
+<script src="js/09-tabs-bulk.js?v=38" defer></script>
+<script src="js/10-interactions.js?v=38" defer></script>
+<script src="js/11-photo-fixes.js?v=38" defer></script>
+<script src="js/12-search-pontos.js?v=38" defer></script>
+<script src="js/13-sorting.js?v=38" defer></script>
+<script src="js/14-tools.js?v=38" defer></script>
+<script src="js/15-routes.js?v=38" defer></script>
+<script src="js/16-medidas.js?v=38" defer></script>
+<script src="js/17-elementos.js?v=38" defer></script>
+<script src="js/18-nomes.js?v=38" defer></script>
+<script src="js/19-boot.js?v=38" defer></script>
+<script src="js/20-fotos-superiores.js?v=38" defer></script>
+<script src="js/21-municipios-br.js?v=38" defer></script>
+<script src="js/22-gpx.js?v=38" defer></script>
+<script src="js/23-inspecoes.js?v=38" defer></script>
 </body>
 </html>

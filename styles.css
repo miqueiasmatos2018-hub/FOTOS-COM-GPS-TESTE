@@ -1678,10 +1678,10 @@
 
   .route-export-btn { flex-shrink: 0; }
 
-  /* KML + IMAGEM lado a lado, tamanho fixo, grudados no rodapé da aba
-     (#tabContentRotas já rola sozinha -- overflow-y:auto -- então sticky
-     aqui gruda no fundo da área visível dela, sem precisar rolar até o
-     fim pra alcançar os botões). */
+  /* Botão único "BAIXAR ROTA", grudado no rodapé da aba (#tabContentRotas
+     já rola sozinha -- overflow-y:auto -- então sticky aqui gruda no fundo
+     da área visível dela, sem precisar rolar até o fim pra alcançar o
+     botão). flex:1 1 0 estica pra ocupar a largura toda com um filho só. */
   .route-export-row {
     position: sticky;
     bottom: 0;

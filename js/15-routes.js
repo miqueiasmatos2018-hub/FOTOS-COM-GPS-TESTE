@@ -2029,6 +2029,15 @@ function _drawRouteImageAttribution(ctx, width, height) {
   ctx.restore();
 }
 
+// Único botão "⬇ BAIXAR ROTA": dispara o KML+CSV (instantâneo) e, em
+// seguida, a geração da imagem JPG (lenta -- busca satélite/rodovias e
+// desenha em canvas). O botão passa a mostrar o loading da ponte durante
+// essa segunda etapa, controlado dentro de exportRoutesImage() abaixo.
+window.downloadRoute = async function() {
+  exportRoutesKML();
+  await exportRoutesImage();
+};
+
 window.exportRoutesImage = async function() {
   const ready = Object.entries(ROUTES).filter(([, r]) => r.waypoints.length >= 2);
   if (!ready.length) {
@@ -2036,7 +2045,7 @@ window.exportRoutesImage = async function() {
     return;
   }
 
-  const btn = document.getElementById('routeImageBtn');
+  const btn = document.getElementById('routeDownloadBtn');
   // Guarda o rótulo original no próprio elemento: dois cliques seguidos
   // (ou um erro no meio) faziam o botão ficar preso em "GERANDO IMAGEM…".
   const originalLabel = btn ? (btn.dataset.label || btn.textContent) : null;

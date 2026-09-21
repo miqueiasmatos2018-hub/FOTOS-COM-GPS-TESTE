@@ -34,13 +34,14 @@
   // folder's contents -- its own name is kept separately (root.name) just
   // for display, matching how 01_CADASTRAL itself is never one of "its
   // own" required entries.
-  function _buildConfTree(fileList) {
+  // Shared by both entry points below: the file input (webkitRelativePath
+  // on every File) and a folder dragged onto the dropzone (relative paths
+  // walked by hand via the DataTransferItem entry API, see _readDroppedItems).
+  function _buildConfTreeFromPaths(entries) {
     const root = { name: null, dirs: {}, files: [] };
-    for (let i = 0; i < fileList.length; i++) {
-      const file = fileList[i];
-      const rel = file.webkitRelativePath || file.name;
-      const parts = rel.split('/').filter(Boolean);
-      if (!parts.length) continue;
+    entries.forEach(({ relativePath, size }) => {
+      const parts = (relativePath || '').split('/').filter(Boolean);
+      if (!parts.length) return;
       if (root.name == null) root.name = parts[0];
       let node = root;
       for (let p = 1; p < parts.length - 1; p++) {
@@ -50,9 +51,64 @@
         node = node.dirs[key];
       }
       const fname = parts[parts.length - 1];
-      if (parts.length > 1) node.files.push({ name: fname, lower: fname.toLowerCase(), size: file.size });
-    }
+      if (parts.length > 1) node.files.push({ name: fname, lower: fname.toLowerCase(), size });
+    });
     return root;
+  }
+
+  function _buildConfTree(fileList) {
+    const entries = [];
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      entries.push({ relativePath: file.webkitRelativePath || file.name, size: file.size });
+    }
+    return _buildConfTreeFromPaths(entries);
+  }
+
+  // ─── DRAG-AND-DROP FOLDER READING ───────────────────────────────────────
+  // <input webkitdirectory> only fires from a click; a folder dragged onto
+  // the dropzone has to be walked by hand through the (Chromium/WebKit)
+  // DataTransferItem.webkitGetAsEntry() -> FileSystemDirectoryEntry API,
+  // which is the only way to read a dropped folder's contents recursively
+  // (dataTransfer.files alone would flatten everything with no path info).
+  function _readEntriesBatch(dirReader) {
+    return new Promise((resolve, reject) => dirReader.readEntries(resolve, reject));
+  }
+
+  async function _readAllEntries(dirReader) {
+    let all = [];
+    let batch;
+    do {
+      batch = await _readEntriesBatch(dirReader);
+      all = all.concat(batch);
+    } while (batch.length > 0);
+    return all;
+  }
+
+  async function _walkEntry(entry, path, out) {
+    if (entry.isFile) {
+      await new Promise((resolve, reject) => {
+        entry.file(file => { out.push({ relativePath: path + entry.name, size: file.size }); resolve(); }, reject);
+      });
+    } else if (entry.isDirectory) {
+      const children = await _readAllEntries(entry.createReader());
+      for (const child of children) {
+        await _walkEntry(child, path + entry.name + '/', out);
+      }
+    }
+  }
+
+  async function _readDroppedItems(dataTransferItems) {
+    const topEntries = [];
+    for (let i = 0; i < dataTransferItems.length; i++) {
+      const entry = dataTransferItems[i].webkitGetAsEntry && dataTransferItems[i].webkitGetAsEntry();
+      if (entry) topEntries.push(entry);
+    }
+    const out = [];
+    for (const entry of topEntries) {
+      await _walkEntry(entry, '', out);
+    }
+    return out;
   }
 
   // Case-insensitive child-folder lookup, tolerant of a trailing note the
@@ -246,13 +302,16 @@
     if (!pdfDir) {
       items.push({ title: '06_PDF', status: 'fail', detail: 'Pasta não encontrada.' });
     } else {
-      const croqui = pdfDir.files.find(f => /_croqui\.pdf$/i.test(f.name));
+      // Aceita "XXXXXX_CROQUI.pdf" e variantes de separador entre o código
+      // e "CROQUI" (espaço, hífen, "-" com espaços em volta, etc.), como
+      // "XXXXXX -CROQUI.pdf".
+      const croqui = pdfDir.files.find(f => /[\s_-]+croqui\.pdf$/i.test(f.name));
       if (croqui) {
-        const m = croqui.name.match(/^(.+)_croqui\.pdf$/i);
+        const m = croqui.name.match(/^(.+?)[\s_-]+croqui\.pdf$/i);
         if (m) codes.push(m[1]);
         items.push({ title: '06_PDF', status: 'ok', detail: `OK (${croqui.name})` });
       } else {
-        items.push({ title: '06_PDF', status: 'fail', detail: 'Nenhum arquivo XXXXXX_CROQUI.pdf encontrado.' });
+        items.push({ title: '06_PDF', status: 'fail', detail: 'Nenhum arquivo XXXXXX_CROQUI.pdf (ou variantes como "XXXXXX -CROQUI.pdf") encontrado.' });
       }
     }
 
@@ -320,7 +379,7 @@
     const results = document.getElementById('confResults');
     const summaryRow = document.getElementById('confSummaryRow');
     const emptyState = document.getElementById('confEmptyState');
-    const copyBtn = document.getElementById('confBtnCopyReport');
+    const reportBtn = document.getElementById('confBtnGenerateReport');
 
     results.innerHTML = items.map(_renderConfItem).join('');
 
@@ -334,9 +393,10 @@
 
     summaryRow.style.display = 'flex';
     emptyState.style.display = 'none';
-    copyBtn.style.display = 'inline-block';
+    reportBtn.style.display = 'inline-block';
 
     window._confLastReport = _buildConfReportText(items, folderName);
+    window._confLastFolderName = folderName;
 
     const rootLooksRight = folderName && folderName.toLowerCase().indexOf('cadastral') !== -1;
     showToast(rootLooksRight
@@ -345,12 +405,29 @@
   }
 
   // ─── WIRING ─────────────────────────────────────────────────────────────
+  const dropzone = document.getElementById('confDropzone');
   const selectBtn = document.getElementById('confBtnSelectFolder');
   const folderInput = document.getElementById('confFolderInput');
-  const copyBtn = document.getElementById('confBtnCopyReport');
+  const reportBtn = document.getElementById('confBtnGenerateReport');
 
-  if (selectBtn && folderInput) {
-    selectBtn.addEventListener('click', () => folderInput.click());
+  function _runFromTree(tree) {
+    try {
+      const items = runConferencia(tree);
+      _renderConferencia(items, tree.name);
+    } catch (err) {
+      console.error('Falha na conferência da pasta:', err);
+      showToast('⚠ Não foi possível conferir a pasta selecionada');
+    } finally {
+      clearButtonLoading(selectBtn, '📁 Selecionar pasta 01_CADASTRAL');
+    }
+  }
+
+  if (selectBtn && folderInput && dropzone) {
+    selectBtn.addEventListener('click', ev => { ev.stopPropagation(); folderInput.click(); });
+    dropzone.addEventListener('click', e => {
+      if (e.target.closest('button')) return;
+      folderInput.click();
+    });
 
     folderInput.addEventListener('change', () => {
       const files = folderInput.files;
@@ -360,29 +437,51 @@
       // (usually very fast) tree build + checklist evaluation blocks the
       // main thread for a large folder.
       requestAnimationFrame(() => {
-        try {
-          const tree = _buildConfTree(files);
-          const items = runConferencia(tree);
-          _renderConferencia(items, tree.name);
-        } catch (err) {
-          console.error('Falha na conferência da pasta:', err);
-          showToast('⚠ Não foi possível conferir a pasta selecionada');
-        } finally {
-          clearButtonLoading(selectBtn, '📁 Selecionar pasta 01_CADASTRAL');
-          folderInput.value = '';
-        }
+        _runFromTree(_buildConfTree(files));
+        folderInput.value = '';
       });
+    });
+
+    ['dragenter', 'dragover'].forEach(evt => {
+      dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('conf-drag'); });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+      dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('conf-drag'); });
+    });
+    dropzone.addEventListener('drop', async e => {
+      const items = e.dataTransfer && e.dataTransfer.items;
+      const hasEntryApi = items && items.length && items[0].webkitGetAsEntry;
+      if (!hasEntryApi) {
+        showToast('⚠ Este navegador não suporta arrastar pastas — use o botão "Selecionar pasta 01_CADASTRAL"');
+        return;
+      }
+      setButtonLoading(selectBtn, 'LENDO PASTA…');
+      try {
+        const entries = await _readDroppedItems(items);
+        if (!entries.length) {
+          showToast('⚠ Nenhum arquivo encontrado na pasta arrastada');
+          clearButtonLoading(selectBtn, '📁 Selecionar pasta 01_CADASTRAL');
+          return;
+        }
+        setButtonLoading(selectBtn, 'CONFERINDO…');
+        _runFromTree(_buildConfTreeFromPaths(entries));
+      } catch (err) {
+        console.error('Falha ao ler a pasta arrastada:', err);
+        showToast('⚠ Não foi possível ler a pasta arrastada — tente o botão "Selecionar pasta 01_CADASTRAL"');
+        clearButtonLoading(selectBtn, '📁 Selecionar pasta 01_CADASTRAL');
+      }
     });
   }
 
-  if (copyBtn) {
-    copyBtn.addEventListener('click', () => {
+  if (reportBtn) {
+    reportBtn.addEventListener('click', ev => {
+      ev.stopPropagation();
       if (!window._confLastReport) return;
-      _copyText(window._confLastReport).then(() => {
-        showToast('📋 Relatório da conferência copiado');
-      }).catch(() => {
-        showToast('⚠ Não foi possível copiar o relatório');
-      });
+      const safeFolder = (window._confLastFolderName || '01_CADASTRAL').replace(/[^a-zA-Z0-9_-]+/g, '_');
+      const stamp = new Date().toISOString().slice(0, 10);
+      const blob = new Blob([window._confLastReport], { type: 'text/plain;charset=utf-8' });
+      triggerDownload(blob, `Conferencia_${safeFolder}_${stamp}.txt`);
+      showToast('📄 Relatório da conferência baixado');
     });
   }
 

@@ -1424,7 +1424,7 @@
     padding: 20px 28px;
   }
   #tabContentConferencia .conf-titleblock,
-  #tabContentConferencia .conf-actions-row,
+  #tabContentConferencia .conf-dropzone,
   #tabContentConferencia .conf-summary-row,
   #tabContentConferencia #confResults,
   #tabContentConferencia .conf-empty-state {
@@ -1454,7 +1454,34 @@
   .conf-h1 { margin: 0; font-size: 15px; font-weight: 700; color: #ffffff; }
   .conf-subtitle { margin: 6px 0 0; color: var(--text2); font-size: 11px; line-height: 1.5; max-width: 64ch; }
 
-  .conf-actions-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .conf-dropzone {
+    margin-top: 18px;
+    border: 2px dashed var(--border2);
+    background: rgba(255,255,255,0.015);
+    border-radius: 6px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+  }
+  .conf-dropzone.conf-drag { border-color: var(--accent); background: var(--accent-glow); }
+  .conf-dz-left { display: flex; align-items: center; gap: 12px; }
+  .conf-dz-icon {
+    width: 34px; height: 34px; flex: none;
+    border: 1.5px solid var(--border2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .conf-dz-text b { display: block; font-size: 12px; color: #ffffff; font-weight: 700; }
+  .conf-dz-text span { display: block; font-size: 10px; color: var(--text2); margin-top: 3px; }
+  .conf-dz-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+
   .conf-btn {
     font-family: var(--mono);
     font-size: 11px;
